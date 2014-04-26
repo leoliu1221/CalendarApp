@@ -20,6 +20,12 @@ dayNumber={
 'sa':5,
 'su':6}
 
+def findData(dataList,subject):
+    for data in dataList:
+        if(data['subject']==subject):
+            return data
+    return None
+
 def convert_meeting_days(days):
     i=0;
     dayList = [];
@@ -46,35 +52,48 @@ fileDirectory = 'enrollment'
 if os.path.isfile('../../../'+fileDirectory+'_files/SA_LEARNER_SERVICES.SSS_STUDENT_CENTER.html'):
     soup = BeautifulSoup(open('../../../'+fileDirectory+'_files/SA_LEARNER_SERVICES.SSS_STUDENT_CENTER.html'))
 else:
-    soup = BeautifulSoup(open('./'+fileDirectory+'_files/SA_LEARNER_SERVICES.SSS_STUDENT_CENTER.htm'))
+    soup = BeautifulSoup(open('../../../'+fileDirectory+'_files/SA_LEARNER_SERVICES.SSS_STUDENT_CENTER.htm'))
 classes = soup.findAll("span", { "class" : "PSHYPERLINKDISABLED" })
 classIds = [];
+subjects = [];
 for c in classes:
     print "processing:",c
+    tempc = c;
     classnumtemp = re.findall(r'\([0-9]+\)',str(c))
+    subjecttemp = re.findall(r'\>[A-Z]+',str(c))
+    if(len(subjecttemp)>=1):
+        if(len(subjecttemp[0])>2):
+            subjects.append(subjecttemp[0][1:]);
     if(len(classnumtemp)>=1):
         classnum = classnumtemp[0][1:-1];
-        #if(re.findall('id=".*?"',str(c))[0][4]=='E'):
         classIds.append(classnum);
 print 'class numbers:', classIds;
-
+print 'subject :',subjects;
 #classIds = [40613,40615]
 #print "skipped original course numbers", "new course number: ",classIds
 classesInfo = {};
 #creating calendar
 cal = Calendar();
+i=-1
 for classId in classIds:
+    i+=1;
+    subject = subjects[i];
     data = requests.get('http://vazzak2.ci.northwestern.edu/courses/?class_num='+str(classId))
     classesInfo[classId] = {};
     if(len(data.json())==0):
         print "no information was found for course num ",classId,'\n'
         continue;
-    classesInfo[classId] = data.json()[-1];
+    
+    classesInfo[classId] = findData(data.json(),subject);
+    if(classesInfo[classId] ==None):
+        print "no information found for the course num",classId,"in this subject: ",subject;
+        continue
     print 'meeting days:',classesInfo[classId]['meeting_days']
     if classesInfo[classId]['meeting_days'] != None:
         classesInfo[classId]['meeting_days'] = convert_meeting_days(classesInfo[classId]['meeting_days'])
     else:
-        print 'skipping course_num: ',classId,' because of no meeting_days'
+        print 'skipping course_num: ',classId,' because of no meeting_days';
+        continue;
     print 'processing course title:',classesInfo[classId]['title']
     for meetDay in classesInfo[classId]['meeting_days']:
         startDate = classesInfo[classId]['start_date']+' 00:00:00';
