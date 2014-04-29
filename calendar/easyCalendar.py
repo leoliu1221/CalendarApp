@@ -22,7 +22,7 @@ dayNumber={
 
 def findData(dataList,subject):
     for data in dataList:
-        if(data['subject']==subject):
+        if(subject in data['subject']):
             return data
     return None
 
